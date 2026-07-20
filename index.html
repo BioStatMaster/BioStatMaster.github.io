@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Euijong Song · Causal Discovery</title>
+<meta name="description" content="Euijong Song — Ph.D. student in Statistics at Seoul National University, working on causal discovery: identifiable classes of structural causal models and learning algorithms for them.">
+<meta property="og:title" content="Euijong Song · Causal Discovery">
+<meta property="og:description" content="Ph.D. student in Statistics at Seoul National University. Identifiable structural causal models, causal discovery, DAG structure learning.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%231a1a1a' stroke-width='4'%3E%3Cpath d='M22 20 L42 33 M20 24 L30 44'/%3E%3C/g%3E%3Ccircle cx='18' cy='17' r='9' fill='%23fdfdfb' stroke='%231a1a1a' stroke-width='4'/%3E%3Ccircle cx='46' cy='36' r='9' fill='%23fdfdfb' stroke='%231a1a1a' stroke-width='4'/%3E%3Ccircle cx='32' cy='50' r='9' fill='%23E4572E'/%3E%3C/svg%3E">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "Euijong Song",
+  "alternateName": "송의종",
+  "email": "brejsong@snu.ac.kr",
+  "jobTitle": "Ph.D. Student",
+  "affiliation": {
+    "@type": "CollegeOrUniversity",
+    "name": "Department of Statistics, Seoul National University"
+  },
+  "knowsAbout": ["Causal Discovery", "Structural Causal Models", "Graphical Models", "Statistics"]
+}
+</script>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --bg: #fdfdfb;
+    --muted: #777;
+    --faint: #b9b9b2;
+    --line: #e4e4de;
+    --acc: #E4572E;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: "Avenir Next", "Helvetica Neue", "Apple SD Gothic Neo", sans-serif;
+  }
+  a { color: var(--acc); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── hero: 헤더 + 큰 그래프가 첫 화면을 가득 채움 ── */
+  .hero {
+    min-height: 100vh; display: flex; flex-direction: column;
+    justify-content: center; padding: 36px 20px 24px;
+  }
+  header { text-align: center; }
+  header h1 { font-size: 34px; font-weight: 600; letter-spacing: -0.5px; }
+  header h1 .kname { font-size: 16px; color: #999; font-weight: 400; }
+  header p { margin-top: 8px; color: var(--muted); font-size: 16px; }
+
+  .graph-wrap {
+    position: relative; width: min(1040px, 96vw); margin: 10px auto 0;
+  }
+  svg {
+    width: 100%; height: auto; display: block;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  }
+  /* 좁은 화면: 그래프를 축소하는 대신 가로 스크롤로 */
+  @media (max-width: 640px) {
+    .graph-wrap { overflow-x: auto; }
+    .graph-wrap svg { min-width: 640px; }
+  }
+
+  .figcap {
+    margin-top: 2px; text-align: center; color: var(--muted); font-size: 14px;
+    font-family: Georgia, serif;
+  }
+  .figcap b { font-style: normal; }
+  .figcap i { font-style: italic; }
+
+  .scroll-hint {
+    text-align: center; margin-top: 26px; color: #bbb; font-size: 13px;
+    animation: bob 2.2s ease-in-out infinite;
+  }
+  @keyframes bob { 50% { transform: translateY(5px); } }
+
+  /* ── edges ── */
+  .edge { fill: none; stroke: var(--ink); stroke-width: 1.6; transition: opacity .4s; }
+  .edge.drawn { stroke-dasharray: 900; stroke-dashoffset: 900; animation: draw 1s ease forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .edge.cut { opacity: .1; }
+  .latent-edge {
+    stroke-dasharray: 4 4 !important; opacity: .5; animation: none !important;
+  }
+  /* ── nodes ── */
+  .node { cursor: pointer; }
+  .node rect, .node circle { fill: var(--bg); stroke: var(--ink); stroke-width: 1.8; transition: all .18s ease; }
+  .node text { text-anchor: middle; dominant-baseline: middle; }
+  .node .t { font-size: 16px; font-weight: 600; fill: var(--ink); }
+  .node .s { font-size: 10.5px; fill: #999; }
+  .node:hover rect, .node:hover circle { fill: var(--ink); }
+  .node:hover .t, .node:hover .s { fill: var(--bg); }
+  .node.active rect, .node.active circle { stroke: var(--acc); stroke-width: 2.6; }
+  .node.active .t { fill: var(--acc); }
+  .node.active:hover rect, .node.active:hover circle { fill: var(--acc); }
+  .node.active:hover .t, .node.active:hover .s { fill: var(--bg); }
+  .node.latent circle { stroke-dasharray: 4 4; }
+  .node.latent .t { font-style: italic; font-weight: 500; }
+
+  /* U가 '관측'된 이후: 점선 → 실선, 액센트 표시 */
+  .node.latent.observed circle {
+    stroke-dasharray: none; stroke: var(--acc);
+    transform-box: fill-box; transform-origin: center;
+    animation: observePulse .6s ease;
+  }
+  .node.latent.observed .t { fill: var(--acc); }
+  .node.latent.observed .s { fill: var(--acc); }
+  .node.latent.observed:hover circle { fill: var(--acc); }
+  .node.latent.observed:hover .t, .node.latent.observed:hover .s { fill: var(--bg); }
+  .latent-edge.observed { stroke-dasharray: none !important; opacity: .85; }
+  @keyframes observePulse { 50% { transform: scale(1.18); } }
+  .node:focus { outline: none; }
+  .node:focus-visible rect, .node:focus-visible circle { stroke: var(--acc); stroke-width: 2.6; }
+
+  .do-badge {
+    font-family: Georgia, serif; font-style: italic; font-size: 15px;
+    fill: var(--acc); text-anchor: middle; pointer-events: none;
+  }
+
+  .pop-emoji {
+    position: absolute; font-size: 23px; pointer-events: none; z-index: 6;
+    will-change: transform, opacity;
+  }
+
+  .tooltip {
+    position: absolute; pointer-events: none; background: var(--ink); color: var(--bg);
+    padding: 6px 11px; border-radius: 3px; font-size: 12.5px; opacity: 0;
+    transition: opacity .15s; white-space: nowrap; transform: translate(-50%, -140%); z-index: 5;
+  }
+
+  /* ── sections ── */
+  main { max-width: 660px; margin: 0 auto; padding: 20px 24px 40px; }
+  section { padding: 52px 0; border-top: 1px solid var(--line); }
+  section h2 { font-size: 21px; margin-bottom: 16px; }
+  section h2::before { content: "→ "; color: #ccc; }
+  section p, section li { color: #555; font-size: 15.5px; line-height: 1.75; }
+  section ul { margin-top: 8px; padding-left: 20px; }
+  .pub { margin-bottom: 15px; font-size: 15.5px; line-height: 1.6; }
+  .pub .venue { color: var(--muted); font-size: 13px; }
+  .cvrow { display: flex; gap: 16px; margin-bottom: 12px; font-size: 15.5px; }
+  .cvrow .yr { color: var(--muted); min-width: 108px; flex-shrink: 0; }
+  .cvrow .sub { color: var(--muted); font-size: 13.5px; }
+  section h3 {
+    font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px;
+    color: #aaa; margin: 26px 0 12px;
+  }
+  section h3:first-of-type { margin-top: 4px; }
+  .pub .authors { color: #555; font-size: 14px; }
+  .pub .authors b { color: var(--ink); font-weight: 600; }
+
+  #sec-unobserved { border-top: 1px dashed #ccc; }
+  #sec-unobserved h2::before { content: "⇢ "; }
+  #sec-unobserved h2 { font-style: italic; }
+  #sec-unobserved .note { font-size: 13.5px; color: var(--muted); font-style: italic; margin-bottom: 12px; }
+
+  /* Figure 2: U의 성분 분해 미니 DAG */
+  .fig2 { margin-top: 22px; }
+  .fig2 svg { width: 100%; max-width: 560px; display: block; margin: 0 auto; }
+  @media (max-width: 480px) {
+    .fig2 { overflow-x: auto; }
+    .fig2 svg { min-width: 470px; }
+  }
+  .fig2 .hnode circle {
+    fill: var(--bg); stroke: var(--ink); stroke-width: 1.6; stroke-dasharray: 4 4;
+    transition: transform .18s ease; transform-box: fill-box; transform-origin: center;
+  }
+  .fig2 .hnode:hover circle { transform: scale(1.12); stroke: var(--acc); }
+  .fig2 .hemoji { font-size: 21px; text-anchor: middle; dominant-baseline: middle; }
+  .fig2 .hlabel { font-size: 13px; fill: var(--muted); text-anchor: end; dominant-baseline: middle; }
+  .fig2 .hedge { fill: none; stroke: #9a9a94; stroke-width: 1.3; stroke-dasharray: 4 4; }
+  .fig2 .htarget rect { fill: var(--bg); stroke: var(--ink); stroke-width: 1.8; }
+  .fig2 .htarget .t { font-size: 16px; font-weight: 600; fill: var(--ink); text-anchor: middle; }
+  .fig2 .htarget .s { font-size: 10.5px; fill: #999; text-anchor: middle; }
+  .fig2 .figcap { margin-top: 10px; }
+
+  footer {
+    margin-top: 30px; padding-top: 22px; border-top: 1px solid var(--line);
+    color: #aaa; font-size: 12.5px; line-height: 1.7; text-align: center;
+  }
+
+  /* 위로 가기 (그래프로 복귀) */
+  .to-top {
+    position: fixed; right: 22px; bottom: 22px; z-index: 20;
+    width: 42px; height: 42px; border-radius: 50%;
+    border: 1.5px solid var(--ink); background: var(--bg); color: var(--ink);
+    font-size: 17px; cursor: pointer; opacity: 0; pointer-events: none;
+    transition: opacity .25s, background .18s, color .18s;
+  }
+  .to-top.show { opacity: 1; pointer-events: auto; }
+  .to-top:hover { background: var(--ink); color: var(--bg); }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .edge.drawn { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
+    .scroll-hint { animation: none; }
+    .node.latent.observed circle { animation: none; }
+    .fig2 .hnode:hover circle { transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <header>
+    <h1>Euijong Song <span class="kname" lang="ko">송의종</span></h1>
+    <p>Ph.D. Student, Department of Statistics, Seoul National University</p>
+  </header>
+  <div class="graph-wrap">
+    <svg id="stage" viewBox="0 0 1040 500" role="img"
+      aria-label="A directed acyclic graph used as navigation: About points to Research and CV; Research points to Papers and Contact; a dashed latent node U points to Research and Papers."></svg>
+    <div class="tooltip" id="tip"></div>
+  </div>
+  <p class="figcap"><b>Figure 1.</b> <i>The causal structure of this page.</i></p>
+  <p class="scroll-hint">click a node, or scroll ↓</p>
+</div>
+
+<main>
+  <section id="sec-about">
+    <h2>About</h2>
+    <p>I am a Ph.D. student (integrated M.S.–Ph.D. program) in the
+    Department of Statistics at Seoul National University, advised by
+    Prof. Gunwoong Park. My research focuses on identifiable classes of
+    structural causal models (SCMs) and on developing learning algorithms
+    for them. Before turning to statistics, I studied life sciences at
+    Konkuk University, where my interest in untangling cause and effect
+    first took root.</p>
+  </section>
+
+  <section id="sec-research">
+    <h2>Research</h2>
+    <ul>
+      <li>Identifiable classes of structural causal models (SCMs)</li>
+      <li>Learning algorithms for discrete and grouped SCMs</li>
+      <li>Outlier-robust causal discovery for high-dimensional linear structural equation models</li>
+    </ul>
+  </section>
+
+  <section id="sec-cv">
+    <h2>CV</h2>
+    <h3>Education</h3>
+    <div class="cvrow"><span class="yr">2024 – Present</span><span>Ph.D. Student, Department of Statistics, Seoul National University <span class="sub">(integrated M.S.–Ph.D. program)</span><br>
+      <span class="sub">Advisor: Prof. Gunwoong Park</span></span></div>
+    <div class="cvrow"><span class="yr">2019 – 2024</span><span>B.S. in Life Sciences, Konkuk University</span></div>
+    <h3>Projects</h3>
+    <div class="cvrow"><span class="yr">2024</span><span>Mountain Accident Risk Zone Prediction, Korean National Fire Agency<br>
+      <span class="sub">Predictive modeling for identifying high-risk mountain accident zones in South Korea</span></span></div>
+    <h3>Talks</h3>
+    <div class="cvrow"><span class="yr">2025</span><span>Outlier-Robust Approach for High-dimensional Linear Structural Equation Models<br>
+      <span class="sub">Kyushu University / SNU Statistics DS Workshop 2025, Kyushu</span></span></div>
+    <div class="cvrow"><span class="yr">2025</span><span>Outlier Robust Causal Discovery<br>
+      <span class="sub">LG Electronics CTO Seminar for Research Engineers</span></span></div>
+    <h3>Skills &amp; Languages</h3>
+    <div class="cvrow"><span class="yr">Programming</span><span>Python, R, MATLAB, LaTeX</span></div>
+    <div class="cvrow"><span class="yr">Languages</span><span>Korean (native), English (fluent), Japanese (intermediate)</span></div>
+  </section>
+
+  <section id="sec-papers">
+    <h2>Papers</h2>
+    <div class="pub">Convex Distance Operator Transport: Convex and Geometry-Preserving Information<br>
+      <span class="authors">Junhyoung Chung, <b>Euijong Song</b>, Won Hwa Kim, Gunwoong Park</span><br>
+      <span class="venue">ICML 2026, to appear · <a href="https://openreview.net/forum?id=nPC7M7XLEv" target="_blank" rel="noopener">OpenReview ↗</a></span></div>
+    <div class="pub">Identifiability of Measurement-Error Variance in Errors-in-Variables Regression<br>
+      <span class="authors">Donguk Shin, Seunghwan Noh, <b>Euijong Song</b>, Gunwoong Park</span><br>
+      <span class="venue">Journal of the American Statistical Association (JASA), under revision</span></div>
+  </section>
+
+  <section id="sec-contact">
+    <h2>Contact</h2>
+    <p><a href="mailto:brejsong@snu.ac.kr">brejsong@snu.ac.kr</a> ·
+      <a href="https://scholar.google.com/citations?hl=en&amp;user=JBpCyZYAAAAJ" target="_blank" rel="noopener">Google Scholar</a> ·
+      <a href="https://github.com/BioStatMaster" target="_blank" rel="noopener">GitHub</a></p>
+  </section>
+
+  <section id="sec-unobserved">
+    <h2>Unobserved</h2>
+    <p class="note">The unseen forces that quietly power everything above.</p>
+    <div class="fig2">
+      <svg viewBox="-75 0 755 370" role="img"
+        aria-label="Figure 2: table tennis, tennis, climbing, good eats and travel, each with a dashed arrow pointing into research.">
+        <defs>
+          <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#9a9a94" stroke-width="1.5"/>
+          </marker>
+        </defs>
+        <path class="hedge" d="M 150 52 Q 320 80 436 168" marker-end="url(#arr2)"/>
+        <path class="hedge" d="M 150 120 Q 320 132 436 177" marker-end="url(#arr2)"/>
+        <path class="hedge" d="M 152 185 L 436 185" marker-end="url(#arr2)"/>
+        <path class="hedge" d="M 150 250 Q 320 238 436 193" marker-end="url(#arr2)"/>
+        <path class="hedge" d="M 150 318 Q 320 290 436 202" marker-end="url(#arr2)"/>
+
+        <g class="hnode"><circle cx="120" cy="45" r="28"/><text class="hemoji" x="120" y="47">🏓</text><text class="hlabel" x="82" y="49">table tennis</text></g>
+        <g class="hnode"><circle cx="120" cy="115" r="28"/><text class="hemoji" x="120" y="117">🎾</text><text class="hlabel" x="82" y="119">tennis</text></g>
+        <g class="hnode"><circle cx="120" cy="185" r="28"/><text class="hemoji" x="120" y="187">🧗</text><text class="hlabel" x="82" y="189">climbing</text></g>
+        <g class="hnode"><circle cx="120" cy="255" r="28"/><text class="hemoji" x="120" y="257">🍽️</text><text class="hlabel" x="82" y="259">good eats</text></g>
+        <g class="hnode"><circle cx="120" cy="325" r="28"/><text class="hemoji" x="120" y="327">✈️</text><text class="hlabel" x="82" y="329">travel</text></g>
+
+        <g class="htarget">
+          <rect x="445" y="154" width="170" height="62" rx="31"/>
+          <text class="t" x="530" y="179">Research</text>
+          <text class="s" x="530" y="199">the observed output</text>
+        </g>
+      </svg>
+      <p class="figcap"><b>Figure 2.</b> <i>A finer decomposition of U.</i></p>
+    </div>
+  </section>
+
+  <footer>
+    P.S. Press and hold any node to perform a <i>do</i>-intervention.<br>
+    This page supports the second rung of the ladder of causation.
+  </footer>
+</main>
+
+<button class="to-top" id="toTop" title="back to the graph" aria-label="Back to the graph">↑</button>
+
+<script>
+const ACC = '#E4572E';
+const SCROLL_MODE = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+/* 큰 캔버스(1040×500)에 맞춰 산개형 배치를 확대 배치 */
+const NODES = {
+  about:    { label: 'About',    sub: 'the root',         tip: 'who I am', pos: [160, 95],  w: 150, h: 62 },
+  research: { label: 'Research', sub: 'causal discovery', tip: 'causal discovery & DAG structure learning', pos: [400, 225], w: 150, h: 62 },
+  cv:       { label: 'CV',       sub: 'trajectory',       tip: 'education & experience', pos: [720, 80],  w: 150, h: 62 },
+  papers:   { label: 'Papers',   sub: 'publications',     tip: 'publications', pos: [490, 405], w: 150, h: 62 },
+  contact:  { label: 'Contact',  sub: 'the sink',         tip: 'get in touch — the sink node', pos: [900, 370], w: 150, h: 62 },
+};
+const EDGES = [
+  ['about','research', 24], ['about','cv', -30], ['research','papers', 30],
+  ['research','contact', -42], ['cv','contact', 30], ['papers','contact', 18],
+];
+const LATENT = { pos: [210, 345], r: 36, targets: ['research', 'papers'] };
+const U_EMOJIS = ['🏓','🎾','🧗','🍽️','✈️','🏓','✨','✨'];
+
+function edgePath(a, b, c, hwA, hhA, hwB, hhB) {
+  const mx = (a[0]+b[0])/2, my = (a[1]+b[1])/2;
+  let dx = b[0]-a[0], dy = b[1]-a[1];
+  const len = Math.hypot(dx, dy); dx/=len; dy/=len;
+  const ctrl = [mx - dy*c, my + dx*c];
+  const trim = (p, toward, hw, hh, pad) => {
+    let ux = toward[0]-p[0], uy = toward[1]-p[1];
+    const l = Math.hypot(ux, uy); ux/=l; uy/=l;
+    const d = Math.min(hw/Math.abs(ux || 1e-9), hh/Math.abs(uy || 1e-9)) + pad;
+    return [p[0]+ux*d, p[1]+uy*d];
+  };
+  const s = trim(a, ctrl, hwA, hhA, 2), e = trim(b, ctrl, hwB, hhB, 9);
+  return `M ${s[0].toFixed(1)} ${s[1].toFixed(1)} Q ${ctrl[0].toFixed(1)} ${ctrl[1].toFixed(1)} ${e[0].toFixed(1)} ${e[1].toFixed(1)}`;
+}
+
+function build() {
+  let html = `<defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#1a1a1a" stroke-width="1.5"/></marker>
+    <marker id="arrF" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#9a9a94" stroke-width="1.5"/></marker>
+  </defs>`;
+
+  EDGES.forEach(([f, t, c], i) => {
+    const A = NODES[f], B = NODES[t];
+    const d = edgePath(A.pos, B.pos, c, A.w/2, A.h/2, B.w/2, B.h/2);
+    html += `<path class="edge drawn" id="e${i}" data-to="${t}" d="${d}" marker-end="url(#arr)" style="animation-delay:${(i*0.12).toFixed(2)}s"/>`;
+  });
+
+  LATENT.targets.forEach((t, i) => {
+    const B = NODES[t];
+    const d = edgePath(LATENT.pos, B.pos, i === 0 ? -14 : 14, LATENT.r, LATENT.r, B.w/2, B.h/2);
+    html += `<path class="edge latent-edge" data-to="${t}" d="${d}" marker-end="url(#arrF)"/>`;
+  });
+
+  Object.entries(NODES).forEach(([k, n]) => {
+    const [x, y] = n.pos;
+    html += `<g class="node" id="node-${k}" data-key="${k}" tabindex="0" role="link" aria-label="Go to ${n.label} section">
+      <rect x="${x-n.w/2}" y="${y-n.h/2}" width="${n.w}" height="${n.h}" rx="31"/>
+      <text class="t" x="${x}" y="${y-6}">${n.label}</text>
+      <text class="s" x="${x}" y="${y+14}">${n.sub}</text></g>`;
+  });
+
+  const [ux, uy] = LATENT.pos;
+  html += `<g class="node latent" id="node-unobserved" data-key="unobserved" tabindex="0" role="link" aria-label="Go to Unobserved section">
+    <circle cx="${ux}" cy="${uy}" r="${LATENT.r}"/>
+    <text class="t" x="${ux}" y="${uy-5}">U</text>
+    <text class="s" x="${ux}" y="${uy+13}">unobserved</text></g>`;
+
+  document.getElementById('stage').innerHTML = html;
+}
+build();
+
+/* ── tooltip ── */
+const tip = document.getElementById('tip');
+const wrap = document.querySelector('.graph-wrap');
+document.querySelectorAll('.node').forEach(n => {
+  n.addEventListener('mouseenter', () => {
+    tip.textContent = n.dataset.key === 'unobserved'
+      ? (uObserved ? 'observed at last: 🏓 🎾 🧗 🍽️ ✈️' : 'latent variables — click to observe')
+      : NODES[n.dataset.key].tip;
+  });
+  n.addEventListener('mousemove', e => {
+    const r = wrap.getBoundingClientRect();
+    tip.style.left = (e.clientX - r.left + wrap.scrollLeft) + 'px';
+    tip.style.top = (e.clientY - r.top) + 'px';
+    tip.style.opacity = 1;
+  });
+  n.addEventListener('mouseleave', () => tip.style.opacity = 0);
+});
+
+/* ── 짧은 클릭: 섹션 이동 / 길게 누르기(600ms): do() 개입 ── */
+const PRESS_MS = 600;
+let pressTimer = null, didIntervene = false;
+document.querySelectorAll('.node').forEach(n => {
+  const startPress = () => {
+    didIntervene = false;
+    pressTimer = setTimeout(() => { didIntervene = true; intervene(n.dataset.key); }, PRESS_MS);
+  };
+  const cancelPress = () => clearTimeout(pressTimer);
+
+  n.addEventListener('mousedown', startPress);
+  n.addEventListener('mouseup', cancelPress);
+  n.addEventListener('mouseleave', cancelPress);
+  n.addEventListener('touchstart', startPress, { passive: true });
+  n.addEventListener('touchend', cancelPress);
+  n.addEventListener('touchmove', cancelPress);
+
+  n.addEventListener('click', () => {
+    if (didIntervene) { didIntervene = false; return; }
+    const key = n.dataset.key;
+    const go = () => {
+      const sec = document.getElementById('sec-' + key);
+      if (sec) sec.scrollIntoView({ behavior: SCROLL_MODE, block: 'start' });
+    };
+    if (key === 'unobserved') { popU(); setTimeout(go, 550); }
+    else go();
+  });
+
+  /* 키보드: Enter/Space = 클릭과 동일 */
+  n.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      n.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    }
+  });
+});
+
+/* ── U 클릭: 잠재변수가 관측되는 순간 — 취미 이모지 팝 ── */
+function popU() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const wrapR = wrap.getBoundingClientRect();
+  const svgR = document.getElementById('stage').getBoundingClientRect();
+  const scale = svgR.width / 1040;
+  const x = svgR.left - wrapR.left + wrap.scrollLeft + LATENT.pos[0] * scale;
+  const y = svgR.top - wrapR.top + LATENT.pos[1] * scale;
+  U_EMOJIS.forEach((em, i) => {
+    const s = document.createElement('span');
+    s.className = 'pop-emoji';
+    s.textContent = em;
+    s.style.left = x + 'px';
+    s.style.top = y + 'px';
+    wrap.appendChild(s);
+    const ang = (Math.PI * 2 * i) / U_EMOJIS.length + (Math.random() - .5) * .6;
+    const dist = 130 + Math.random() * 130;
+    const tx = (Math.cos(ang) * dist).toFixed(0), ty = (Math.sin(ang) * dist - 44).toFixed(0);
+    const rot = (Math.random() * 90 - 45).toFixed(0);
+    s.animate([
+      { transform: 'translate(-50%,-50%) scale(.3)', opacity: 1 },
+      { transform: `translate(calc(-50% + ${(tx*0.75).toFixed(0)}px), calc(-50% + ${(ty*0.75).toFixed(0)}px)) scale(1.25) rotate(${rot}deg)`, opacity: 1, offset: .72 },
+      { transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(1.3) rotate(${rot}deg)`, opacity: 0 }
+    ], { duration: 1100 + Math.random() * 300, easing: 'cubic-bezier(.17,.67,.4,1)' })
+      .onfinish = () => s.remove();
+  });
+}
+
+function intervene(key) {
+  const svg = document.getElementById('stage');
+  const node = document.getElementById('node-' + key);
+  const incoming = [...svg.querySelectorAll(`[data-to="${key}"]`)];
+  const pos = key === 'unobserved' ? LATENT.pos : NODES[key].pos;
+  const halfH = key === 'unobserved' ? LATENT.r : NODES[key].h / 2;
+
+  const badge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  badge.setAttribute('class', 'do-badge');
+  badge.setAttribute('x', pos[0]);
+  badge.setAttribute('y', pos[1] - halfH - 13);
+  badge.textContent = incoming.length
+    ? `do(${key === 'unobserved' ? 'U' : NODES[key].label})`
+    : 'already exogenous!';
+  svg.appendChild(badge);
+
+  incoming.forEach(e => e.classList.add('cut'));
+  const shapeEl = node.querySelector('rect, circle');
+  const prevStroke = shapeEl.style.stroke;
+  shapeEl.style.stroke = ACC;
+
+  setTimeout(() => {
+    incoming.forEach(e => e.classList.remove('cut'));
+    shapeEl.style.stroke = prevStroke;
+    badge.remove();
+  }, 2600);
+}
+
+/* ── U 관측: Unobserved 섹션을 실제로 보고 나면 잠재변수가 관측된 상태로 전환 ── */
+let uObserved = false;
+function observeU() {
+  if (uObserved) return;
+  uObserved = true;
+  const g = document.getElementById('node-unobserved');
+  g.classList.add('observed');
+  g.querySelector('.s').textContent = 'observed!';
+  g.setAttribute('aria-label', 'Go to Unobserved section (now observed)');
+  document.querySelectorAll('.latent-edge').forEach(e => e.classList.add('observed'));
+}
+
+/* ── scroll-sync: 현재 섹션의 노드를 액센트로 점등 ── */
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(en => {
+    if (!en.isIntersecting) return;
+    const key = en.target.id.replace('sec-', '');
+    if (key === 'unobserved') observeU();
+    document.querySelectorAll('.node').forEach(n =>
+      n.classList.toggle('active', n.dataset.key === key));
+  });
+}, { rootMargin: '-40% 0px -55% 0px' });
+document.querySelectorAll('section').forEach(s => observer.observe(s));
+
+/* 마지막 섹션은 화면 중앙 감지 띠에 못 닿을 수 있어 별도 감지:
+   섹션이 40% 이상 보이면 관측된 것으로 처리 */
+const uWatcher = new IntersectionObserver(entries => {
+  entries.forEach(en => { if (en.isIntersecting) { observeU(); uWatcher.disconnect(); } });
+}, { threshold: 0.4 });
+uWatcher.observe(document.getElementById('sec-unobserved'));
+
+/* ── 그래프로 돌아가기 버튼 ── */
+const toTop = document.getElementById('toTop');
+window.addEventListener('scroll', () => {
+  toTop.classList.toggle('show', window.scrollY > window.innerHeight * 0.7);
+  /* 히어로(그래프 화면)로 돌아오면 섹션 점등 전부 해제 */
+  if (window.scrollY < window.innerHeight * 0.35) {
+    document.querySelectorAll('.node.active').forEach(n => n.classList.remove('active'));
+  }
+  /* 페이지 맨 끝 도달 = Unobserved까지 봤다는 뜻 (폴백 트리거 + 노드 점등) */
+  if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 60) {
+    observeU();
+    document.querySelectorAll('.node').forEach(n =>
+      n.classList.toggle('active', n.dataset.key === 'unobserved'));
+  }
+}, { passive: true });
+toTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: SCROLL_MODE }));
+</script>
+</body>
+</html>
