@@ -37,6 +37,24 @@
     --line: #e4e4de;
     --acc: #E4572E;
   }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8e8e4;
+      --bg: #14161a;
+      --muted: #9a9a92;
+      --faint: #565660;
+      --line: #2a2d33;
+      --acc: #ff7a52;
+    }
+    /* 어두운 배경에서 가독성을 위해 하드코딩 회색들을 밝게 보정 */
+    section p, section li, .pub .authors { color: #b6b6b0; }
+    .pub .authors b { color: var(--ink); }
+    .fig2 .hedge { stroke: var(--faint); }
+    /* SVG 마커(화살표) 색상도 테마에 맞춰 반전 */
+    #stage marker#arr path { stroke: var(--ink); }
+    #stage marker#arrF path, .fig2 marker#arr2 path { stroke: var(--faint); }
+  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body {
@@ -268,7 +286,7 @@
     <h2>Papers</h2>
     <div class="pub">Convex Distance Operator Transport: Convex and Geometry-Preserving Information<br>
       <span class="authors">Junhyoung Chung, <b>Euijong Song</b>, Won Hwa Kim, Gunwoong Park</span><br>
-      <span class="venue">ICML 2026, to appear · <a href="https://openreview.net/forum?id=nPC7M7XLEv" target="_blank" rel="noopener">OpenReview ↗</a></span></div>
+      <span class="venue">ICML 2026 · <a href="https://openreview.net/forum?id=nPC7M7XLEv" target="_blank" rel="noopener">OpenReview ↗</a></span></div>
     <div class="pub">Identifiability of Measurement-Error Variance in Errors-in-Variables Regression<br>
       <span class="authors">Donguk Shin, Seunghwan Noh, <b>Euijong Song</b>, Gunwoong Park</span><br>
       <span class="venue">Journal of the American Statistical Association (JASA), under revision</span></div>

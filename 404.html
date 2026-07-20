@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>404 · node not found</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%231a1a1a' stroke-width='4'%3E%3Cpath d='M22 20 L42 33 M20 24 L30 44'/%3E%3C/g%3E%3Ccircle cx='18' cy='17' r='9' fill='%23fdfdfb' stroke='%231a1a1a' stroke-width='4'/%3E%3Ccircle cx='46' cy='36' r='9' fill='%23fdfdfb' stroke='%231a1a1a' stroke-width='4'/%3E%3Ccircle cx='32' cy='50' r='9' fill='%23E4572E'/%3E%3C/svg%3E">
+<style>
+  :root { --ink:#1a1a1a; --bg:#fdfdfb; --muted:#777; --line:#e4e4de; --acc:#E4572E; }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink:#e8e8e4; --bg:#14161a; --muted:#9a9a92; --line:#2a2d33; --acc:#ff7a52; }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: "Avenir Next","Helvetica Neue","Apple SD Gothic Neo",sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; padding: 24px;
+  }
+  svg { width: min(360px, 82vw); height: auto; margin-bottom: 10px; }
+  .code { font-size: 15px; letter-spacing: 3px; color: var(--muted); }
+  h1 { font-size: 26px; font-weight: 600; margin-top: 10px; letter-spacing: -0.4px; }
+  p { color: var(--muted); font-size: 15px; margin-top: 12px; line-height: 1.7; }
+  .cap { font-family: Georgia, serif; font-size: 13.5px; color: var(--muted); margin-top: 6px; }
+  .cap i { font-style: italic; }
+  a { color: var(--acc); text-decoration: none; font-weight: 500; }
+  a:hover { text-decoration: underline; }
+  .edge { fill: none; stroke: var(--ink); stroke-width: 1.6; }
+  .miss { stroke: var(--acc); stroke-dasharray: 5 4; opacity: .8; }
+  .n rect { fill: var(--bg); stroke: var(--ink); stroke-width: 1.8; }
+  .n text { text-anchor: middle; dominant-baseline: middle; font-size: 14px; font-weight: 600; fill: var(--ink); }
+  .ghost circle { fill: none; stroke: var(--acc); stroke-width: 1.8; stroke-dasharray: 4 4; }
+  .ghost text { text-anchor: middle; dominant-baseline: middle; font-size: 15px; font-style: italic; fill: var(--acc); }
+</style>
+</head>
+<body>
+  <svg viewBox="0 0 360 180" role="img" aria-label="A dangling edge points to a missing dashed node labeled 404.">
+    <defs>
+      <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#E4572E" stroke-width="1.5"/>
+      </marker>
+    </defs>
+    <path class="edge miss" d="M 118 90 L 210 90" marker-end="url(#a)"/>
+    <g class="n"><rect x="20" y="62" width="96" height="56" rx="28"/><text x="68" y="90">You are here</text></g>
+    <g class="ghost"><circle cx="262" cy="90" r="34"/><text x="262" y="90">404</text></g>
+  </svg>
+  <div class="code">HTTP 404</div>
+  <h1>node not found</h1>
+  <p>This vertex is not in the graph.<br>The path you followed leads nowhere.</p>
+  <p class="cap"><i>— no such node in the DAG —</i></p>
+  <p style="margin-top:22px"><a href="/">← back to the root</a></p>
+</body>
+</html>
