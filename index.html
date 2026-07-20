@@ -183,7 +183,8 @@
   #sec-unobserved .note { font-size: 13.5px; color: var(--muted); font-style: italic; margin-bottom: 12px; }
 
   /* Figure 2: U의 성분 분해 미니 DAG */
-  .fig2 { margin-top: 22px; }
+  .fig2 { margin-top: 22px; position: relative; }
+  .fig2 .hnode { cursor: pointer; }
   .fig2 svg { width: 100%; max-width: 560px; display: block; margin: 0 auto; }
   @media (max-width: 480px) {
     .fig2 { overflow-x: auto; }
@@ -537,25 +538,20 @@ mq.addEventListener('change', e => {
   renderGraph();
 });
 
-/* ── U 클릭: 잠재변수가 관측되는 순간 — 취미 이모지 팝 ── */
-function popU() {
+/* ── 이모지 팝 헬퍼: container 내부 (x,y) 지점에서 이모지들이 사방으로 터짐 ── */
+function burst(container, x, y, emojis, spread) {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const V = VIEW[mode];
-  const wrapR = wrap.getBoundingClientRect();
-  const svgR = document.getElementById('stage').getBoundingClientRect();
-  const scale = svgR.width / V.w;
-  const x = svgR.left - wrapR.left + V.latent[0] * scale;
-  const y = svgR.top - wrapR.top + V.latent[1] * scale;
-  U_EMOJIS.forEach((em, i) => {
+  const s0 = spread || 1;
+  emojis.forEach((em, i) => {
     const s = document.createElement('span');
     s.className = 'pop-emoji';
     s.textContent = em;
     s.style.left = x + 'px';
     s.style.top = y + 'px';
-    wrap.appendChild(s);
-    const ang = (Math.PI * 2 * i) / U_EMOJIS.length + (Math.random() - .5) * .6;
-    const dist = 130 + Math.random() * 130;
-    const tx = (Math.cos(ang) * dist).toFixed(0), ty = (Math.sin(ang) * dist - 44).toFixed(0);
+    container.appendChild(s);
+    const ang = (Math.PI * 2 * i) / emojis.length + (Math.random() - .5) * .6;
+    const dist = (130 + Math.random() * 130) * s0;
+    const tx = (Math.cos(ang) * dist).toFixed(0), ty = (Math.sin(ang) * dist - 44 * s0).toFixed(0);
     const rot = (Math.random() * 90 - 45).toFixed(0);
     s.animate([
       { transform: 'translate(-50%,-50%) scale(.3)', opacity: 1 },
@@ -565,6 +561,36 @@ function popU() {
       .onfinish = () => s.remove();
   });
 }
+
+/* ── U 클릭: 잠재변수가 관측되는 순간 — 취미 이모지 팝 ── */
+function popU() {
+  const V = VIEW[mode];
+  const wrapR = wrap.getBoundingClientRect();
+  const svgR = document.getElementById('stage').getBoundingClientRect();
+  const scale = svgR.width / V.w;
+  const x = svgR.left - wrapR.left + V.latent[0] * scale;
+  const y = svgR.top - wrapR.top + V.latent[1] * scale;
+  burst(wrap, x, y, U_EMOJIS);
+}
+
+/* ── Figure 2: 취미 노드 클릭 시 그 이모지가 그 자리에서 팝 ── */
+document.querySelectorAll('.fig2 .hnode').forEach(node => {
+  node.setAttribute('tabindex', '0');
+  node.setAttribute('role', 'button');
+  const em = node.querySelector('.hemoji').textContent;
+  node.setAttribute('aria-label', node.querySelector('.hlabel').textContent + ' — tap to pop');
+  const pop = () => {
+    const fig = document.querySelector('.fig2');
+    const c = node.querySelector('circle').getBoundingClientRect();
+    const f = fig.getBoundingClientRect();
+    burst(fig, c.left + c.width / 2 - f.left, c.top + c.height / 2 - f.top,
+          [em, em, em, em, '✨', '✨'], 0.6);
+  };
+  node.addEventListener('click', pop);
+  node.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pop(); }
+  });
+});
 
 /* ── do() 개입: 들어오는 엣지 절단 ── */
 function intervene(key) {
