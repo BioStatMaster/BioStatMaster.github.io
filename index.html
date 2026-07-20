@@ -134,7 +134,8 @@
   .node.latent.observed .s { fill: var(--acc); }
   .node.latent.observed:hover circle { fill: var(--acc); }
   .node.latent.observed:hover .t, .node.latent.observed:hover .s { fill: var(--bg); }
-  .latent-edge.observed { stroke-dasharray: none !important; opacity: .85; }
+  /* 관측되면 일반 엣지와 완전히 동일한 모양(실선·잉크색 화살촉·불투명) */
+  .latent-edge.observed { stroke-dasharray: none !important; opacity: 1; }
   @keyframes observePulse { 50% { transform: scale(1.18); } }
   .node:focus { outline: none; }
   .node:focus-visible rect, .node:focus-visible circle { stroke: var(--acc); stroke-width: 2.6; }
@@ -386,10 +387,10 @@ const VIEW = {
   },
   mobile: {
     vb: '0 0 560 770', w: 560,
-    pos: { about:[140,70], research:[240,290], cv:[420,165], papers:[230,520], contact:[400,700] },
-    latent: [85, 430], latentR: 36,
+    pos: { about:[140,70], research:[240,290], cv:[420,165], papers:[260,540], contact:[400,710] },
+    latent: [70, 405], latentR: 36,
     curves: { 'about-research':20, 'about-cv':-22, 'research-papers':25, 'research-contact':-30, 'cv-contact':32, 'papers-contact':15 },
-    latentCurves: [-12, 12],
+    latentCurves: [-14, 18],
   },
 };
 const mq = window.matchMedia('(max-width: 640px)');
@@ -512,7 +513,10 @@ function applyObservedVisual() {
   g.classList.add('observed');
   g.querySelector('.s').textContent = 'observed!';
   g.setAttribute('aria-label', 'Go to Unobserved section (now observed)');
-  document.querySelectorAll('.latent-edge').forEach(e => e.classList.add('observed'));
+  document.querySelectorAll('.latent-edge').forEach(e => {
+    e.classList.add('observed');
+    e.setAttribute('marker-end', 'url(#arr)'); // 옅은 화살촉 → 일반 잉크색 화살촉
+  });
 }
 function observeU() {
   if (uObserved) return;
