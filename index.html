@@ -59,10 +59,11 @@
     width: 100%; height: auto; display: block;
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   }
-  /* 좁은 화면: 그래프를 축소하는 대신 가로 스크롤로 */
+  /* 좁은 화면: 세로형 배치로 전환되므로 캔버스 폭 제한 */
   @media (max-width: 640px) {
-    .graph-wrap { overflow-x: auto; }
-    .graph-wrap svg { min-width: 640px; }
+    .graph-wrap { width: min(430px, 96vw); }
+    header h1 { font-size: 28px; }
+    header p { font-size: 14px; }
   }
 
   .figcap {
@@ -319,19 +320,38 @@
 <script>
 const ACC = '#E4572E';
 const SCROLL_MODE = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
-/* 큰 캔버스(1040×500)에 맞춰 산개형 배치를 확대 배치 */
+
 const NODES = {
-  about:    { label: 'About',    sub: 'the root',         tip: 'who I am', pos: [160, 95],  w: 150, h: 62 },
-  research: { label: 'Research', sub: 'causal discovery', tip: 'causal discovery & DAG structure learning', pos: [400, 225], w: 150, h: 62 },
-  cv:       { label: 'CV',       sub: 'trajectory',       tip: 'education & experience', pos: [720, 80],  w: 150, h: 62 },
-  papers:   { label: 'Papers',   sub: 'publications',     tip: 'publications', pos: [490, 405], w: 150, h: 62 },
-  contact:  { label: 'Contact',  sub: 'the sink',         tip: 'get in touch — the sink node', pos: [900, 370], w: 150, h: 62 },
+  about:    { label: 'About',    sub: 'the root',         tip: 'who I am', w: 150, h: 62 },
+  research: { label: 'Research', sub: 'causal discovery', tip: 'causal discovery & DAG structure learning', w: 150, h: 62 },
+  cv:       { label: 'CV',       sub: 'trajectory',       tip: 'education & experience', w: 150, h: 62 },
+  papers:   { label: 'Papers',   sub: 'publications',     tip: 'publications', w: 150, h: 62 },
+  contact:  { label: 'Contact',  sub: 'the sink',         tip: 'get in touch — the sink node', w: 150, h: 62 },
 };
 const EDGES = [
-  ['about','research', 24], ['about','cv', -30], ['research','papers', 30],
-  ['research','contact', -42], ['cv','contact', 30], ['papers','contact', 18],
+  ['about','research'], ['about','cv'], ['research','papers'],
+  ['research','contact'], ['cv','contact'], ['papers','contact'],
 ];
-const LATENT = { pos: [210, 345], r: 36, targets: ['research', 'papers'] };
+/* 데스크톱: 가로 산개형 / 모바일: 세로 산개형 — 한 화면에 전부 들어가도록 */
+const VIEW = {
+  desktop: {
+    vb: '0 0 1040 500', w: 1040,
+    pos: { about:[160,95], research:[400,225], cv:[720,80], papers:[490,405], contact:[900,370] },
+    latent: [210, 345], latentR: 36,
+    curves: { 'about-research':24, 'about-cv':-30, 'research-papers':30, 'research-contact':-42, 'cv-contact':30, 'papers-contact':18 },
+    latentCurves: [-14, 14],
+  },
+  mobile: {
+    vb: '0 0 560 770', w: 560,
+    pos: { about:[140,70], research:[240,290], cv:[420,165], papers:[230,520], contact:[400,700] },
+    latent: [85, 430], latentR: 36,
+    curves: { 'about-research':20, 'about-cv':-22, 'research-papers':25, 'research-contact':-30, 'cv-contact':32, 'papers-contact':15 },
+    latentCurves: [-12, 12],
+  },
+};
+const mq = window.matchMedia('(max-width: 640px)');
+let mode = mq.matches ? 'mobile' : 'desktop';
+
 const U_EMOJIS = ['🏓','🎾','🧗','🍽️','✈️','🏓','✨','✨'];
 
 function edgePath(a, b, c, hwA, hhA, hwB, hhB) {
@@ -350,6 +370,7 @@ function edgePath(a, b, c, hwA, hhA, hwB, hhB) {
 }
 
 function build() {
+  const V = VIEW[mode];
   let html = `<defs>
     <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#1a1a1a" stroke-width="1.5"/></marker>
@@ -357,99 +378,126 @@ function build() {
       <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#9a9a94" stroke-width="1.5"/></marker>
   </defs>`;
 
-  EDGES.forEach(([f, t, c], i) => {
+  EDGES.forEach(([f, t], i) => {
     const A = NODES[f], B = NODES[t];
-    const d = edgePath(A.pos, B.pos, c, A.w/2, A.h/2, B.w/2, B.h/2);
+    const d = edgePath(V.pos[f], V.pos[t], V.curves[f + '-' + t], A.w/2, A.h/2, B.w/2, B.h/2);
     html += `<path class="edge drawn" id="e${i}" data-to="${t}" d="${d}" marker-end="url(#arr)" style="animation-delay:${(i*0.12).toFixed(2)}s"/>`;
   });
 
-  LATENT.targets.forEach((t, i) => {
+  ['research', 'papers'].forEach((t, i) => {
     const B = NODES[t];
-    const d = edgePath(LATENT.pos, B.pos, i === 0 ? -14 : 14, LATENT.r, LATENT.r, B.w/2, B.h/2);
+    const d = edgePath(V.latent, V.pos[t], V.latentCurves[i], V.latentR, V.latentR, B.w/2, B.h/2);
     html += `<path class="edge latent-edge" data-to="${t}" d="${d}" marker-end="url(#arrF)"/>`;
   });
 
   Object.entries(NODES).forEach(([k, n]) => {
-    const [x, y] = n.pos;
+    const [x, y] = V.pos[k];
     html += `<g class="node" id="node-${k}" data-key="${k}" tabindex="0" role="link" aria-label="Go to ${n.label} section">
       <rect x="${x-n.w/2}" y="${y-n.h/2}" width="${n.w}" height="${n.h}" rx="31"/>
       <text class="t" x="${x}" y="${y-6}">${n.label}</text>
       <text class="s" x="${x}" y="${y+14}">${n.sub}</text></g>`;
   });
 
-  const [ux, uy] = LATENT.pos;
+  const [ux, uy] = V.latent;
   html += `<g class="node latent" id="node-unobserved" data-key="unobserved" tabindex="0" role="link" aria-label="Go to Unobserved section">
-    <circle cx="${ux}" cy="${uy}" r="${LATENT.r}"/>
+    <circle cx="${ux}" cy="${uy}" r="${V.latentR}"/>
     <text class="t" x="${ux}" y="${uy-5}">U</text>
     <text class="s" x="${ux}" y="${uy+13}">unobserved</text></g>`;
 
-  document.getElementById('stage').innerHTML = html;
+  const svg = document.getElementById('stage');
+  svg.setAttribute('viewBox', V.vb);
+  svg.innerHTML = html;
 }
-build();
 
-/* ── tooltip ── */
+/* ── 노드 이벤트 (툴팁 / 클릭 / 길게 누르기 / 키보드) ── */
 const tip = document.getElementById('tip');
 const wrap = document.querySelector('.graph-wrap');
-document.querySelectorAll('.node').forEach(n => {
-  n.addEventListener('mouseenter', () => {
-    tip.textContent = n.dataset.key === 'unobserved'
-      ? (uObserved ? 'observed at last: 🏓 🎾 🧗 🍽️ ✈️' : 'latent variables — click to observe')
-      : NODES[n.dataset.key].tip;
-  });
-  n.addEventListener('mousemove', e => {
-    const r = wrap.getBoundingClientRect();
-    tip.style.left = (e.clientX - r.left + wrap.scrollLeft) + 'px';
-    tip.style.top = (e.clientY - r.top) + 'px';
-    tip.style.opacity = 1;
-  });
-  n.addEventListener('mouseleave', () => tip.style.opacity = 0);
-});
-
-/* ── 짧은 클릭: 섹션 이동 / 길게 누르기(600ms): do() 개입 ── */
 const PRESS_MS = 600;
 let pressTimer = null, didIntervene = false;
-document.querySelectorAll('.node').forEach(n => {
-  const startPress = () => {
-    didIntervene = false;
-    pressTimer = setTimeout(() => { didIntervene = true; intervene(n.dataset.key); }, PRESS_MS);
-  };
-  const cancelPress = () => clearTimeout(pressTimer);
 
-  n.addEventListener('mousedown', startPress);
-  n.addEventListener('mouseup', cancelPress);
-  n.addEventListener('mouseleave', cancelPress);
-  n.addEventListener('touchstart', startPress, { passive: true });
-  n.addEventListener('touchend', cancelPress);
-  n.addEventListener('touchmove', cancelPress);
+function attachNodes() {
+  document.querySelectorAll('.node').forEach(n => {
+    n.addEventListener('mouseenter', () => {
+      tip.textContent = n.dataset.key === 'unobserved'
+        ? (uObserved ? 'observed at last: 🏓 🎾 🧗 🍽️ ✈️' : 'latent variables — click to observe')
+        : NODES[n.dataset.key].tip;
+    });
+    n.addEventListener('mousemove', e => {
+      const r = wrap.getBoundingClientRect();
+      tip.style.left = (e.clientX - r.left) + 'px';
+      tip.style.top = (e.clientY - r.top) + 'px';
+      tip.style.opacity = 1;
+    });
+    n.addEventListener('mouseleave', () => tip.style.opacity = 0);
 
-  n.addEventListener('click', () => {
-    if (didIntervene) { didIntervene = false; return; }
-    const key = n.dataset.key;
-    const go = () => {
-      const sec = document.getElementById('sec-' + key);
-      if (sec) sec.scrollIntoView({ behavior: SCROLL_MODE, block: 'start' });
+    const startPress = () => {
+      didIntervene = false;
+      pressTimer = setTimeout(() => { didIntervene = true; intervene(n.dataset.key); }, PRESS_MS);
     };
-    if (key === 'unobserved') { popU(); setTimeout(go, 550); }
-    else go();
-  });
+    const cancelPress = () => clearTimeout(pressTimer);
+    n.addEventListener('mousedown', startPress);
+    n.addEventListener('mouseup', cancelPress);
+    n.addEventListener('mouseleave', cancelPress);
+    n.addEventListener('touchstart', startPress, { passive: true });
+    n.addEventListener('touchend', cancelPress);
+    n.addEventListener('touchmove', cancelPress);
 
-  /* 키보드: Enter/Space = 클릭과 동일 */
-  n.addEventListener('keydown', e => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      n.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    }
+    n.addEventListener('click', () => {
+      if (didIntervene) { didIntervene = false; return; }
+      const key = n.dataset.key;
+      const go = () => {
+        const sec = document.getElementById('sec-' + key);
+        if (sec) sec.scrollIntoView({ behavior: SCROLL_MODE, block: 'start' });
+      };
+      if (key === 'unobserved') { popU(); setTimeout(go, 550); }
+      else go();
+    });
+
+    n.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        n.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      }
+    });
   });
+}
+
+/* ── U 관측 상태 ── */
+let uObserved = false;
+function applyObservedVisual() {
+  const g = document.getElementById('node-unobserved');
+  g.classList.add('observed');
+  g.querySelector('.s').textContent = 'observed!';
+  g.setAttribute('aria-label', 'Go to Unobserved section (now observed)');
+  document.querySelectorAll('.latent-edge').forEach(e => e.classList.add('observed'));
+}
+function observeU() {
+  if (uObserved) return;
+  uObserved = true;
+  applyObservedVisual();
+}
+
+/* ── 렌더 (모드 전환 시 재렌더, 관측 상태 유지) ── */
+function renderGraph() {
+  build();
+  attachNodes();
+  if (uObserved) applyObservedVisual();
+}
+renderGraph();
+mq.addEventListener('change', e => {
+  mode = e.matches ? 'mobile' : 'desktop';
+  renderGraph();
 });
 
 /* ── U 클릭: 잠재변수가 관측되는 순간 — 취미 이모지 팝 ── */
 function popU() {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const V = VIEW[mode];
   const wrapR = wrap.getBoundingClientRect();
   const svgR = document.getElementById('stage').getBoundingClientRect();
-  const scale = svgR.width / 1040;
-  const x = svgR.left - wrapR.left + wrap.scrollLeft + LATENT.pos[0] * scale;
-  const y = svgR.top - wrapR.top + LATENT.pos[1] * scale;
+  const scale = svgR.width / V.w;
+  const x = svgR.left - wrapR.left + V.latent[0] * scale;
+  const y = svgR.top - wrapR.top + V.latent[1] * scale;
   U_EMOJIS.forEach((em, i) => {
     const s = document.createElement('span');
     s.className = 'pop-emoji';
@@ -470,12 +518,14 @@ function popU() {
   });
 }
 
+/* ── do() 개입: 들어오는 엣지 절단 ── */
 function intervene(key) {
+  const V = VIEW[mode];
   const svg = document.getElementById('stage');
   const node = document.getElementById('node-' + key);
   const incoming = [...svg.querySelectorAll(`[data-to="${key}"]`)];
-  const pos = key === 'unobserved' ? LATENT.pos : NODES[key].pos;
-  const halfH = key === 'unobserved' ? LATENT.r : NODES[key].h / 2;
+  const pos = key === 'unobserved' ? V.latent : V.pos[key];
+  const halfH = key === 'unobserved' ? V.latentR : NODES[key].h / 2;
 
   const badge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
   badge.setAttribute('class', 'do-badge');
@@ -496,18 +546,6 @@ function intervene(key) {
     shapeEl.style.stroke = prevStroke;
     badge.remove();
   }, 2600);
-}
-
-/* ── U 관측: Unobserved 섹션을 실제로 보고 나면 잠재변수가 관측된 상태로 전환 ── */
-let uObserved = false;
-function observeU() {
-  if (uObserved) return;
-  uObserved = true;
-  const g = document.getElementById('node-unobserved');
-  g.classList.add('observed');
-  g.querySelector('.s').textContent = 'observed!';
-  g.setAttribute('aria-label', 'Go to Unobserved section (now observed)');
-  document.querySelectorAll('.latent-edge').forEach(e => e.classList.add('observed'));
 }
 
 /* ── scroll-sync: 현재 섹션의 노드를 액센트로 점등 ── */
